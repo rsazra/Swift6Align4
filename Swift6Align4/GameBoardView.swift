@@ -7,64 +7,38 @@
 
 import SwiftUI
 
-enum Player {
-    case red, yellow, none
-}
+struct GameBoardView: View {
+    @Binding var board: [[Player]]
 
-struct Connect4Board: View {
-    let columns = 7
-    let rows = 6
-
-    @State private var board: [[Player]] = Array(
-        repeating: Array(repeating: .none, count: 7), count: 6)
-    @State private var player: Player = .red
-    @State private var winner: Player? = nil
-    private var scoreCardText: String {
-        if winner != nil {
-            return "Game Over!"
-        } else {
-            return ""
-        }
-    }
-    
     var body: some View {
+        RoundedRectangle(cornerRadius: 14)
+            .frame(width: 360, height: 390)
+            .foregroundColor(.blue)
+            .mask(boardOutlineView)
+    }
+
+    private var boardOutlineView: some View {
+        RoundedRectangle(cornerRadius: 14)
+            .frame(width: 360, height: 390)
+            .foregroundColor(.white)
+            .overlay(circlesView)
+            .compositingGroup()
+            .luminanceToAlpha()
+    }
+
+    private var circlesView: some View {
         VStack {
-            // Board
-            Section {
-                VStack {
-                    ForEach(1...rows, id: \.self) { row in
-                        HStack {
-                            ForEach(1...columns, id: \.self) { column in
-                                Circle()
-                                    .fill(Color.white)  // Empty slot
-                                    .frame(width: 40, height: 50)
-                                    .overlay(
-                                        Circle().stroke(
-                                            Color.black, lineWidth: 2))
-//                                    .padding(1)
-                            }
-                        }
+            ForEach(1...rows, id: \.self) { row in
+                HStack {
+                    ForEach(1...columns, id: \.self) { column in
+                        Circle()
+                            .frame(width: 40, height: 50)
+                            .overlay(
+                                Circle().stroke(
+                                    Color.black, lineWidth: 2))
                     }
                 }
             }
-            .padding()
-            .background(Color.blue)
-            .cornerRadius(16)
-            .overlay(
-                RoundedRectangle(cornerRadius: 14)
-                    .stroke(Color.black, lineWidth: 2)
-            )
-            // Scores
-            Section {
-                Text(scoreCardText)
-                    .frame(width: nil, height: 100, alignment: .topLeading)
-            }
         }
-    }
-}
-
-struct Connect4Board_Previews: PreviewProvider {
-    static var previews: some View {
-        Connect4Board()
     }
 }

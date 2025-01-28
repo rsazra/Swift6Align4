@@ -11,7 +11,7 @@ import SwiftUI
 struct Swift6Align4App: App {
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            AppView()
         }
     }
 }
