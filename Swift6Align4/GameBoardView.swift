@@ -34,9 +34,10 @@ struct AppView: View {
 struct GameBoardView: View {
     @Binding var board: [[Player]]
     @Binding var player: Player
-    @State var currentChipX: CGFloat = -144
-    @State var currentChipY: CGFloat = -145
-    
+    let startingChipOffset: CGSize = CGSize(width: 0, height: -145)
+    @State var currentChipOffset: CGSize = CGSize(width: 0, height: -145)
+    //    @State var currentChipPosition: CGPoint = CGPoint(x: 0, y: 0)
+
     /*
      Chip y positions:
      start: -235 or -261 to keep pattern going
@@ -54,10 +55,10 @@ struct GameBoardView: View {
      2: 3
      1: 5
      */
-    
+
     /*
      Chip x positions:
-     
+
      column 1: -144
      column 2: -96
      column 3: -48
@@ -65,14 +66,13 @@ struct GameBoardView: View {
      column 5: 48
      column 6: 96
      column 7: 144
-     
      */
-    
+
     func dropChip(column: Int, row: Int) {
         board[1][1] = .yellow
         board[4][4] = .red
         withAnimation(.spring()) {
-            currentChipY = 145
+            currentChipOffset.height = 145
         }
     }
 
@@ -80,11 +80,10 @@ struct GameBoardView: View {
         Button("test") {
             dropChip(column: 4, row: 1)
         }
-        Spacer()
+        //        Spacer()
         ZStack {
-            playedChips
             currentChip
-                .offset(x: currentChipX, y: currentChipY)
+                .offset(currentChipOffset)
             RoundedRectangle(cornerRadius: 14)
                 .frame(width: 360, height: 380)
                 .foregroundColor(.blue)
@@ -93,7 +92,26 @@ struct GameBoardView: View {
                 .overlay(
                     RoundedRectangle(cornerRadius: 14)
                         .stroke(.black, lineWidth: 2))
+            playedChips
         }
+        .gesture(
+            DragGesture(minimumDistance: 0, coordinateSpace: .local)
+                .onChanged({ value in
+                    var newChipOffset = value.location.x - 180
+                    if newChipOffset < -144 {
+                        newChipOffset = -144
+                    } else if newChipOffset > 144 {
+                        newChipOffset = 144
+                    }
+                    currentChipOffset.width = newChipOffset
+                })
+                .onEnded({
+                    value in
+                    var endLocation = value.location.x
+                    if endLocation > 0 && endLocation < 360 {
+                        dropChip(column: 3, row: 4)
+                    }
+                }))
     }
 
     private var currentChip: some View {
@@ -102,23 +120,30 @@ struct GameBoardView: View {
             .foregroundColor(player == .red ? .red : .yellow)
             .overlay(Circle().stroke(Color.black, lineWidth: 2))
     }
-    
+
     private var playedChips: some View {
         HStack {
             ForEach(0..<columns, id: \.self) { column in
                 VStack {
                     ForEach(0..<rows, id: \.self) { row in
                         let chip = board[row][column]
-                        let color = chip == .none ? Color.clear : chip == .red ? Color.red : Color.yellow
+                        let color =
+                            chip == .none
+                            ? Color.clear
+                            : chip == .red ? Color.red : Color.yellow
                         Circle()
                             .frame(width: 40, height: 50)
                             .foregroundColor(color)
                     }
                 }
+                //                .contentShape(Rectangle())
+                //                .gesture(
+                //                    DragGesture(minimumDistance: 0)
+                //                        .onChanged { _ in currentChipOffset.width += 1 })
             }
         }
     }
-    
+
     private var boardOutlineView: some View {
         RoundedRectangle(cornerRadius: 14)
             .foregroundColor(.white)
