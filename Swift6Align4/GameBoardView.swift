@@ -18,7 +18,7 @@ struct AppView: View {
 
     @State private var board: [[Player]] = Array(
         repeating: Array(
-            repeating: .none, count: columns), count: rows)
+            repeating: .none, count: rows), count: columns)
     @State private var player: Player = .red
     @State private var wins: [Player: Int] = [.red: 0, .yellow: 0, .none: 0]
     @State private var winner: Player? = nil
@@ -34,8 +34,8 @@ struct AppView: View {
 struct GameBoardView: View {
     @Binding var board: [[Player]]
     @Binding var player: Player
-    let startingChipOffset: CGSize = CGSize(width: 0, height: -145)
-    @State var currentChipOffset: CGSize = CGSize(width: 0, height: -145)
+    let startingChipOffset: CGSize = CGSize(width: 0, height: -235)
+    @State var currentChipOffset: CGSize = CGSize(width: 0, height: -235)
     //    @State var currentChipPosition: CGPoint = CGPoint(x: 0, y: 0)
 
     /*
@@ -68,17 +68,57 @@ struct GameBoardView: View {
      column 7: 144
      */
 
-    func dropChip(column: Int, row: Int) {
-        board[1][1] = .yellow
-        board[4][4] = .red
-        withAnimation(.spring()) {
-            currentChipOffset.height = 145
+    func snapChipToGrid(currentOffset: CGFloat) -> CGFloat {
+        // need to make boundaries at intervals of 48, on each 24
+        if currentOffset > 120 { return 144 }
+        if currentOffset > 72 { return 96 }
+        if currentOffset > 24 { return 48 }
+        if currentOffset > -24 { return 0 }
+        if currentOffset > -72 { return -48 }
+        if currentOffset > -120 { return -96 }
+        return -144
+    }
+
+    func dropChip() {
+        let column = Int(currentChipOffset.width / 48 + 3)
+        let columnChips = board[column]
+        let last = columnChips.lastIndex(of: .none)
+
+        if last == nil {
+            dropFailed()
+            return
+        }
+        
+        withAnimation(.easeInOut(duration: 0.5)) {
+            currentChipOffset.height = CGFloat(145 - (58 * (5 - last!)))
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            board[column][last!] = player
+            resetChip()
+        }
+    }
+
+    func resetChip() {
+        currentChipOffset.height = -235
+        player = player == .red ? .yellow : .red
+    }
+
+    // want to improve this
+    func dropFailed() {
+        let endOffset = currentChipOffset.width
+        withAnimation(
+            .easeInOut(duration: 0.1).repeatCount(5, autoreverses: true)
+        ) {
+            currentChipOffset.width += 20
+        }
+        withAnimation(.easeInOut(duration: 0.1)) {
+            currentChipOffset.width = endOffset
         }
     }
 
     var body: some View {
         Button("test") {
-            dropChip(column: 4, row: 1)
+            dropChip()
         }
         //        Spacer()
         ZStack {
@@ -97,19 +137,15 @@ struct GameBoardView: View {
         .gesture(
             DragGesture(minimumDistance: 0, coordinateSpace: .local)
                 .onChanged({ value in
-                    var newChipOffset = value.location.x - 180
-                    if newChipOffset < -144 {
-                        newChipOffset = -144
-                    } else if newChipOffset > 144 {
-                        newChipOffset = 144
-                    }
-                    currentChipOffset.width = newChipOffset
+                    let newChipOffset: CGFloat = value.location.x - 180
+
+                    currentChipOffset.width = snapChipToGrid(
+                        currentOffset: newChipOffset)
                 })
                 .onEnded({
                     value in
-                    var endLocation = value.location.x
-                    if endLocation > 0 && endLocation < 360 {
-                        dropChip(column: 3, row: 4)
+                    if value.location.x > 0 && value.location.x < 360 {
+                        dropChip()
                     }
                 }))
     }
@@ -122,11 +158,11 @@ struct GameBoardView: View {
     }
 
     private var playedChips: some View {
-        HStack {
-            ForEach(0..<columns, id: \.self) { column in
-                VStack {
-                    ForEach(0..<rows, id: \.self) { row in
-                        let chip = board[row][column]
+        VStack {
+            ForEach(0..<rows, id: \.self) { row in
+                HStack {
+                    ForEach(0..<columns, id: \.self) { column in
+                        let chip = board[column][row]
                         let color =
                             chip == .none
                             ? Color.clear
