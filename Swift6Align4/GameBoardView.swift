@@ -14,62 +14,26 @@ enum Player {
 let columns = 7
 let rows = 6
 
-struct AppView: View {
-
-    @State private var board: [[Player]] = Array(
+struct GameView: View {
+    @State var board: [[Player]] = Array(
         repeating: Array(
             repeating: .none, count: rows), count: columns)
-    @State private var player: Player = .red
+    @State var player: Player = .red
     @State private var wins: [Player: Int] = [.red: 0, .yellow: 0, .none: 0]
     @State private var winner: Player? = nil
 
-    var body: some View {
-        VStack {
-            GameBoardView(board: $board, player: $player)
-            ScoreCardView(wins: $wins)
-        }
-    }
-}
-
-struct GameBoardView: View {
-    @Binding var board: [[Player]]
-    @Binding var player: Player
     let startingChipOffset: CGSize = CGSize(width: 0, height: -235)
     @State var currentChipOffset: CGSize = CGSize(width: 0, height: -235)
-    //    @State var currentChipPosition: CGPoint = CGPoint(x: 0, y: 0)
+    @State var isAnimating: Bool = false
 
-    /*
-     Chip y positions:
-     start: -235 or -261 to keep pattern going
-     level 6: -145
-     level 5: -87
-     level 4: -29
-     level 3: 29
-     level 2: 87
-     level 1: 145
-     so 29 is the magic number. these are all multiples of it.
-     6: -5
-     5: -3
-     4: -1
-     3: 1
-     2: 3
-     1: 5
-     */
-
-    /*
-     Chip x positions:
-
-     column 1: -144
-     column 2: -96
-     column 3: -48
-     column 4: 0
-     column 5: 48
-     column 6: 96
-     column 7: 144
-     */
+    var body: some View {
+        VStack {
+            GameBoardView
+            ScoreCardView
+        }
+    }
 
     func snapChipToGrid(currentOffset: CGFloat) -> CGFloat {
-        // need to make boundaries at intervals of 48, on each 24
         if currentOffset > 120 { return 144 }
         if currentOffset > 72 { return 96 }
         if currentOffset > 24 { return 48 }
@@ -80,6 +44,8 @@ struct GameBoardView: View {
     }
 
     func dropChip() {
+        if isAnimating { return }
+
         let column = Int(currentChipOffset.width / 48 + 3)
         let columnChips = board[column]
         let last = columnChips.lastIndex(of: .none)
@@ -88,14 +54,17 @@ struct GameBoardView: View {
             dropFailed()
             return
         }
-        
-        withAnimation(.easeInOut(duration: 0.5)) {
+
+        isAnimating = true
+        withAnimation(.easeInOut(duration: 0.3)) {
             currentChipOffset.height = CGFloat(145 - (58 * (5 - last!)))
         }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
             board[column][last!] = player
+            isAnimating = false
             resetChip()
         }
+
     }
 
     func resetChip() {
@@ -103,7 +72,6 @@ struct GameBoardView: View {
         player = player == .red ? .yellow : .red
     }
 
-    // want to improve this
     func dropFailed() {
         let endOffset = currentChipOffset.width
         withAnimation(
@@ -116,11 +84,7 @@ struct GameBoardView: View {
         }
     }
 
-    var body: some View {
-        Button("test") {
-            dropChip()
-        }
-        //        Spacer()
+    private var GameBoardView: some View {
         ZStack {
             currentChip
                 .offset(currentChipOffset)
@@ -172,10 +136,6 @@ struct GameBoardView: View {
                             .foregroundColor(color)
                     }
                 }
-                //                .contentShape(Rectangle())
-                //                .gesture(
-                //                    DragGesture(minimumDistance: 0)
-                //                        .onChanged { _ in currentChipOffset.width += 1 })
             }
         }
     }
@@ -204,14 +164,11 @@ struct GameBoardView: View {
             }
         }
     }
-}
 
-struct ScoreCardView: View {
-    @Binding var wins: [Player: Int]
-    var body: some View {
+    private var ScoreCardView: some View {
         Text("scoreCardText")
             .frame(alignment: .topLeading)
     }
 }
 
-#Preview { AppView() }
+#Preview { GameView() }
