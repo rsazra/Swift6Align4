@@ -21,6 +21,7 @@ struct GameView: View {
     @State var player: Player = .red
     @State private var wins: [Player: Int] = [.red: 0, .yellow: 0, .none: 0]
     @State private var winner: Player? = nil
+    @State private var playCount: Int = 0
 
     let startingChipOffset: CGSize = CGSize(width: 0, height: -235)
     @State var currentChipOffset: CGSize = CGSize(width: 0, height: -235)
@@ -61,6 +62,8 @@ struct GameView: View {
         }
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
             board[column][last!] = player
+            playCount += 1
+            checkEnd(column: column, row: last!)
             isAnimating = false
             resetChip()
         }
@@ -84,6 +87,75 @@ struct GameView: View {
         }
     }
 
+    func checkEnd(column: Int, row: Int) {
+        print(playCount)
+        if playCount == 42 {print("draw")}
+        // only check around where the latest piece was dropped
+        // check 4 verticals
+        for i in 0..<4 {
+            if (row + i - 3) >= 0, (row + i) < 6 {
+                if
+                    board[column][row + i] == player,
+                    board[column][row + i - 1] == player,
+                    board[column][row + i - 2] == player,
+                    board[column][row + i - 3] == player
+                {
+                    print("done")
+                    winner = player
+                    winner == .red ? print("red") : print("yellow")
+                }
+            }
+        }
+        
+        // check 4 horizontals
+        for i in 0..<4 {
+            if (column + i - 3) >= 0, (column + i) < 7 {
+                if
+                    board[column + i][row] == player,
+                    board[column + i - 1][row] == player,
+                    board[column + i - 2][row] == player,
+                    board[column + i - 3][row] == player
+                {
+                    print("row done")
+                    winner = player
+                    winner == .red ? print("red") : print("yellow")
+                }
+            }
+        }
+
+        // check 4 descending diagonal
+        for i in 0..<4 {
+            if (column + i - 3) >= 0, (column + i) < 7, (row + i - 3) >= 0, (row + i) < 6 {
+                if
+                    board[column + i][row + i] == player,
+                    board[column + i - 1][row + i - 1] == player,
+                    board[column + i - 2][row + i - 2] == player,
+                    board[column + i - 3][row + i - 3] == player
+                {
+                    print("diagonal down done")
+                    winner = player
+                    winner == .red ? print("red") : print("yellow")
+                }
+            }
+        }
+
+        // check 4 ascending diagonals
+        for i in 0..<4 {
+            if (column - i) >= 0, (column - i + 3) < 7, (row + i - 3) >= 0, (row + i) < 6 {
+                if
+                    board[column - i][row + i] == player,
+                    board[column - i + 1][row + i - 1] == player,
+                    board[column - i + 2][row + i - 2] == player,
+                    board[column - i + 3][row + i - 3] == player
+                {
+                    print("diagonal up done")
+                    winner = player
+                    winner == .red ? print("red") : print("yellow")
+                }
+            }
+        }
+    }
+
     private var GameBoardView: some View {
         ZStack {
             currentChip
@@ -101,6 +173,7 @@ struct GameView: View {
         .gesture(
             DragGesture(minimumDistance: 0, coordinateSpace: .local)
                 .onChanged({ value in
+                    if isAnimating { return }
                     let newChipOffset: CGFloat = value.location.x - 180
 
                     currentChipOffset.width = snapChipToGrid(
