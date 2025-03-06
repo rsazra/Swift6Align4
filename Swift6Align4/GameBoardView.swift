@@ -183,6 +183,7 @@ struct GameView: View {
                 .overlay(
                     RoundedRectangle(cornerRadius: 14)
                         .stroke(.black, lineWidth: 2))
+                .dim(winner != nil)
             playedChips
         }
         .gesture(
@@ -221,12 +222,13 @@ struct GameView: View {
                         let winningChip = winner != nil ? winningChips.contains {$0 == (column, row)} : false
                         let color =
                             chip == .none
-                            ? highlightColor
+                            ? winner == nil ? highlightColor : Color.white
                             : chip == .red ? Color.red : Color.yellow
                         Circle()
                             .frame(width: 40, height: 50)
                             .foregroundColor(color)
-                            .glow(chip == .none || winningChip)
+                            .glow(color == highlightColor || winningChip)
+                            .dim(!winningChip && winner != nil)
                     }
                 }
             }
@@ -273,11 +275,32 @@ struct Glow: ViewModifier {
     }
 }
 
+struct Dim: ViewModifier {
+    func body(content: Content) -> some View {
+        content
+            .overlay(
+                Rectangle()
+                    .foregroundColor(.black)
+                    .opacity(0.5)
+                    .mask(content)
+            )
+    }
+}
+
 extension View {
     @ViewBuilder
     func glow(_ glowing: Bool) -> some View {
         if glowing {
             self.modifier(Glow())
+        }
+        else {
+            self
+        }
+    }
+    @ViewBuilder
+    func dim(_ dim: Bool) -> some View {
+        if dim {
+            self.modifier(Dim())
         }
         else {
             self
