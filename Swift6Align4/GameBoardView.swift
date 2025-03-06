@@ -48,7 +48,7 @@ struct GameView: View {
     }
 
     func dropChip() {
-        if isAnimating { return }
+        if isAnimating || currentColumn == -1 { return }
 
         let column = currentColumn
         let columnChips = board[column]
@@ -62,15 +62,13 @@ struct GameView: View {
         isAnimating = true
         withAnimation(.easeInOut(duration: 0.3)) {
             currentChipOffset.height = CGFloat(145 - (58 * (5 - last!)))
-        }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+        } completion: {
             board[column][last!] = player
             playCount += 1
             checkEnd(column: column, row: last!)
             isAnimating = false
             resetChip()
         }
-
     }
 
     func resetChip() {
@@ -91,10 +89,9 @@ struct GameView: View {
     }
 
     func checkEnd(column: Int, row: Int) {
-        print(playCount)
         if playCount == 42 { print("draw") }
         // only check around where the latest piece was dropped
-        // check 4 verticals
+        // verticals
         for i in 0..<4 {
             if (row + i - 3) >= 0, (row + i) < 6 {
                 if board[column][row + i] == player,
@@ -105,14 +102,12 @@ struct GameView: View {
                     for j in 0..<4 {
                         winningChips.append((column, row + i - j))
                     }
-                    print("done")
                     winner = player
-                    winner == .red ? print("red") : print("yellow")
                 }
             }
         }
 
-        // check 4 horizontals
+        // horizontals
         for i in 0..<4 {
             if (column + i - 3) >= 0, (column + i) < 7 {
                 if board[column + i][row] == player,
@@ -123,14 +118,12 @@ struct GameView: View {
                     for j in 0..<4 {
                         winningChips.append((column + i - j, row))
                     }
-                    print("row done")
                     winner = player
-                    winner == .red ? print("red") : print("yellow")
                 }
             }
         }
 
-        // check 4 descending diagonal
+        // descending diagonals
         for i in 0..<4 {
             if (column + i - 3) >= 0, (column + i) < 7, (row + i - 3) >= 0,
                 (row + i) < 6
@@ -143,14 +136,12 @@ struct GameView: View {
                     for j in 0..<4 {
                         winningChips.append((column + i - j, row + i - j))
                     }
-                    print("diagonal down done")
                     winner = player
-                    winner == .red ? print("red") : print("yellow")
                 }
             }
         }
 
-        // check 4 ascending diagonals
+        // ascending diagonals
         for i in 0..<4 {
             if (column - i) >= 0, (column - i + 3) < 7, (row + i - 3) >= 0,
                 (row + i) < 6
@@ -163,9 +154,7 @@ struct GameView: View {
                     for j in 0..<4 {
                         winningChips.append((column - i + j, row + i - j))
                     }
-                    print("diagonal up done")
                     winner = player
-                    winner == .red ? print("red") : print("yellow")
                 }
             }
         }
