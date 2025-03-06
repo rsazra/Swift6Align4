@@ -15,10 +15,11 @@ let columns = 7
 let rows = 6
 
 struct GameView: View {
-    @State var board: [[Player]] = Array(
+    @State private var board: [[Player]] = Array(
         repeating: Array(
             repeating: .none, count: rows), count: columns)
-    @State var player: Player = .red
+    @State private var player: Player = .red
+    @State private var starter: Player = .red
     @State private var wins: [Player: Int] = [.red: 0, .yellow: 0, .none: 0]
     @State private var winner: Player? = nil
     @State private var winningChips: [(Int, Int)] = []
@@ -33,7 +34,7 @@ struct GameView: View {
     var body: some View {
         VStack {
             GameBoardView
-            ScoreCardView
+            ControlsView
         }
     }
 
@@ -67,12 +68,15 @@ struct GameView: View {
             playCount += 1
             checkEnd(column: column, row: last!)
             isAnimating = false
-            resetChip()
+            if winner == nil {
+                resetChip() // should be conditional on if game is over
+            }
         }
     }
 
     func resetChip() {
         currentChipOffset.height = -235
+        currentChipOffset.width = 0
         player = player == .red ? .yellow : .red
     }
 
@@ -89,7 +93,7 @@ struct GameView: View {
     }
 
     func checkEnd(column: Int, row: Int) {
-        if playCount == 42 { print("draw") }
+        if playCount == 42 { winner = Player.none }
         // only check around where the latest piece was dropped
         // verticals
         for i in 0..<4 {
@@ -166,7 +170,7 @@ struct GameView: View {
                 .offset(currentChipOffset)
             RoundedRectangle(cornerRadius: 14)
                 .frame(width: 360, height: 380)
-                .foregroundColor(.blue)
+                .foregroundColor(.indigo) // indigo or blue?
                 .overlay(circlesView(addStroke: true))
                 .mask(boardOutlineView)
                 .overlay(
@@ -206,7 +210,7 @@ struct GameView: View {
             ForEach(0..<rows, id: \.self) { row in
                 HStack {
                     ForEach(0..<columns, id: \.self) { column in
-                        let highlightColor = column == currentColumn ? Color.orange : Color.clear
+                        let highlightColor = column == currentColumn ? Color.green.opacity(0.3) : Color.clear
                         let chip = board[column][row]
                         let winningChip = winner != nil ? winningChips.contains {$0 == (column, row)} : false
                         let color =
@@ -248,10 +252,26 @@ struct GameView: View {
             }
         }
     }
+    
+    private func resetGame() {
+        player = starter == .red ? .red : .yellow
+        starter = starter == .red ? .yellow : .red
+        resetChip()
+        board = Array(
+            repeating: Array(
+                repeating: .none, count: rows), count: columns)
+        winner = nil
+        winningChips = []
+        playCount = 0
+    }
 
-    private var ScoreCardView: some View {
-        Text("scoreCardText")
-            .frame(alignment: .topLeading)
+    private var ControlsView: some View {
+        VStack {
+            Text("scoreCardText")
+            Button("New Game") {
+                resetGame()
+            }
+        }
     }
 }
 
