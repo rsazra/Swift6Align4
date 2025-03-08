@@ -24,7 +24,11 @@ struct GameView: View {
     @State private var winner: Player? = nil
     @State private var winningChips: [(Int, Int)] = []
     @State private var playCount: Int = 0
+    @State private var opacities: [Player: CGFloat] = [
+        .red: 0, .yellow: 0, .none: 0,
+    ]
 
+    let defaultAnimation = Animation.easeInOut(duration: 0.5)
     let startingChipOffset: CGSize = CGSize(width: 0, height: -235)
     @State var currentChipOffset: CGSize = CGSize(width: 0, height: -235)
     @State var isAnimating: Bool = false
@@ -32,7 +36,8 @@ struct GameView: View {
     @State var currentColumn: Int = -1
 
     var body: some View {
-        VStack {
+        VStack(spacing: 40) {
+            Spacer()
             GameBoardView
             ControlsView
         }
@@ -49,7 +54,7 @@ struct GameView: View {
     }
 
     func dropChip() {
-        if isAnimating || currentColumn == -1 { return }
+        if isAnimating || currentColumn == -1 || winner != nil { return }
 
         let column = currentColumn
         let columnChips = board[column]
@@ -61,7 +66,7 @@ struct GameView: View {
         }
 
         isAnimating = true
-        withAnimation(.easeInOut(duration: 0.3)) {
+        withAnimation(defaultAnimation) {
             currentChipOffset.height = CGFloat(145 - (58 * (5 - last!)))
         } completion: {
             board[column][last!] = player
@@ -69,15 +74,18 @@ struct GameView: View {
             checkEnd(column: column, row: last!)
             isAnimating = false
             if winner == nil {
-                resetChip() // should be conditional on if game is over
+                resetChip()  // should be conditional on if game is over
             }
         }
     }
 
     func resetChip() {
-        currentChipOffset.height = -235
+        currentChipOffset.height = -500
         currentChipOffset.width = 0
         player = player == .red ? .yellow : .red
+        withAnimation(defaultAnimation) {
+            currentChipOffset.height = -235
+        }
     }
 
     func dropFailed() {
@@ -162,6 +170,15 @@ struct GameView: View {
                 }
             }
         }
+
+        guard let newWinner = winner else {
+            return
+        }
+
+        wins[newWinner]! += 1
+        // animate this
+        // maybe also animate the game end state?
+        opacities[newWinner] = 1
     }
 
     private var GameBoardView: some View {
@@ -170,12 +187,13 @@ struct GameView: View {
                 .offset(currentChipOffset)
             RoundedRectangle(cornerRadius: 14)
                 .frame(width: 360, height: 380)
-                .foregroundColor(.indigo) // indigo or blue?
+                .foregroundColor(.indigo)  // indigo or blue?
                 .overlay(circlesView(addStroke: true))
                 .mask(boardOutlineView)
                 .overlay(
                     RoundedRectangle(cornerRadius: 14)
-                        .stroke(.black, lineWidth: 2))
+                        .stroke(.black, lineWidth: 2)
+                )
                 .dim(winner != nil)
             playedChips
         }
@@ -195,7 +213,8 @@ struct GameView: View {
                         dropChip()
                     }
                     currentColumn = -1
-                }))
+                })
+        )
     }
 
     private var currentChip: some View {
@@ -210,9 +229,12 @@ struct GameView: View {
             ForEach(0..<rows, id: \.self) { row in
                 HStack {
                     ForEach(0..<columns, id: \.self) { column in
-                        let highlightColor = column == currentColumn ? Color.green.opacity(0.3) : Color.clear
+                        let highlightColor =
+                            column == currentColumn ? Color.white : Color.clear
                         let chip = board[column][row]
-                        let winningChip = winner != nil ? winningChips.contains {$0 == (column, row)} : false
+                        let winningChip = winningChips.contains {
+                            $0 == (column, row)
+                        }
                         let color =
                             chip == .none
                             ? winner == nil ? highlightColor : Color.white
@@ -222,6 +244,7 @@ struct GameView: View {
                             .foregroundColor(color)
                             .glow(color == highlightColor || winningChip)
                             .dim(!winningChip && winner != nil)
+                            .animation(defaultAnimation, value: winner)
                     }
                 }
             }
@@ -252,7 +275,7 @@ struct GameView: View {
             }
         }
     }
-    
+
     private func resetGame() {
         player = starter == .red ? .red : .yellow
         starter = starter == .red ? .yellow : .red
@@ -266,11 +289,36 @@ struct GameView: View {
     }
 
     private var ControlsView: some View {
-        VStack {
-            Text("scoreCardText")
-            Button("New Game") {
-                resetGame()
+        VStack(spacing: 70) {
+            Grid(alignment: .leading, horizontalSpacing: 15) {
+                GridRow {
+                    Text("Red:")
+                    Text("\(wins[.red] ?? 0)")
+                }
+                .foregroundColor(.red)
+                .opacity(opacities[Player.red] ?? 0)
+                .animation(defaultAnimation, value: opacities[Player.red] ?? 0)
+                GridRow {
+                    Text("Yellow:")
+                    Text("\(wins[.yellow] ?? 0)")
+                }
+                .foregroundColor(.yellow)
+                .opacity(opacities[Player.yellow] ?? 0)
+                .animation(
+                    defaultAnimation, value: opacities[Player.yellow] ?? 0)
+                GridRow {
+                    Text("Draws:")
+                    Text("\(wins[.none] ?? 0)")
+                }
+                .foregroundColor(.gray)
+                .opacity(opacities[Player.none] ?? 0)
+                .animation(defaultAnimation, value: opacities[Player.none] ?? 0)
             }
+
+            Button("New Game", action: resetGame)
+                .buttonStyle(.borderedProminent)
+                .opacity(winner == nil ? 0 : 1)
+                .animation(defaultAnimation, value: winner)
         }
     }
 }
@@ -285,13 +333,17 @@ struct Glow: ViewModifier {
 }
 
 struct Dim: ViewModifier {
+    let isActive: Bool
+
     func body(content: Content) -> some View {
         content
             .overlay(
                 Rectangle()
                     .foregroundColor(.black)
-                    .opacity(0.5)
+                    .opacity(isActive ? 0.5 : 0)
                     .mask(content)
+                    .animation(
+                        Animation.easeInOut(duration: 0.5), value: isActive)
             )
     }
 }
@@ -299,21 +351,11 @@ struct Dim: ViewModifier {
 extension View {
     @ViewBuilder
     func glow(_ glowing: Bool) -> some View {
-        if glowing {
-            self.modifier(Glow())
-        }
-        else {
-            self
-        }
+        if glowing { self.modifier(Glow()) } else { self }
     }
     @ViewBuilder
     func dim(_ dim: Bool) -> some View {
-        if dim {
-            self.modifier(Dim())
-        }
-        else {
-            self
-        }
+        self.modifier(Dim(isActive: dim))
     }
 }
 
