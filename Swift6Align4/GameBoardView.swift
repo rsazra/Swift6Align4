@@ -74,7 +74,7 @@ struct GameView: View {
             checkEnd(column: column, row: last!)
             isAnimating = false
             if winner == nil {
-                resetChip()  // should be conditional on if game is over
+                resetChip()
             }
         }
     }
@@ -176,8 +176,6 @@ struct GameView: View {
         }
 
         wins[newWinner]! += 1
-        // animate this
-        // maybe also animate the game end state?
         opacities[newWinner] = 1
     }
 
@@ -187,7 +185,7 @@ struct GameView: View {
                 .offset(currentChipOffset)
             RoundedRectangle(cornerRadius: 14)
                 .frame(width: 360, height: 380)
-                .foregroundColor(.indigo)  // indigo or blue?
+                .foregroundColor(.indigo)
                 .overlay(circlesView(addStroke: true))
                 .mask(boardOutlineView)
                 .overlay(
@@ -230,21 +228,20 @@ struct GameView: View {
                 HStack {
                     ForEach(0..<columns, id: \.self) { column in
                         let highlightColor =
-                            column == currentColumn ? Color.white : Color.clear
+                            column == currentColumn ? Color("HighlightColor") : Color.clear
                         let chip = board[column][row]
                         let winningChip = winningChips.contains {
                             $0 == (column, row)
                         }
                         let color =
                             chip == .none
-                            ? winner == nil ? highlightColor : Color.white
+                            ? winner == nil ? highlightColor : Color("HighlightColor")
                             : chip == .red ? Color.red : Color.yellow
                         Circle()
                             .frame(width: 40, height: 50)
                             .foregroundColor(color)
                             .glow(color == highlightColor || winningChip)
                             .dim(!winningChip && winner != nil)
-                            .animation(defaultAnimation, value: winner)
                     }
                 }
             }
@@ -280,11 +277,13 @@ struct GameView: View {
         player = starter == .red ? .red : .yellow
         starter = starter == .red ? .yellow : .red
         resetChip()
-        board = Array(
-            repeating: Array(
-                repeating: .none, count: rows), count: columns)
-        winner = nil
-        winningChips = []
+        withAnimation {
+            board = Array(
+                repeating: Array(
+                    repeating: .none, count: rows), count: columns)
+            winningChips = []
+            winner = nil
+        }
         playCount = 0
     }
 
@@ -340,7 +339,7 @@ struct Dim: ViewModifier {
             .overlay(
                 Rectangle()
                     .foregroundColor(.black)
-                    .opacity(isActive ? 0.5 : 0)
+                    .opacity(isActive ? 0.3 : 0)
                     .mask(content)
                     .animation(
                         Animation.easeInOut(duration: 0.5), value: isActive)
