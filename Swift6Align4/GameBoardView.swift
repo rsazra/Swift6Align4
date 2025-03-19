@@ -176,7 +176,9 @@ struct GameView: View {
         }
 
         wins[newWinner]! += 1
-        opacities[newWinner] = 1
+        if wins[newWinner]! == 1 {
+            withAnimation { opacities[newWinner] = 1 }
+        }
     }
 
     private var GameBoardView: some View {
@@ -296,22 +298,20 @@ struct GameView: View {
                 }
                 .foregroundColor(.red)
                 .opacity(opacities[Player.red] ?? 0)
-                .animation(defaultAnimation, value: opacities[Player.red] ?? 0)
+                
                 GridRow {
                     Text("Yellow:")
                     Text("\(wins[.yellow] ?? 0)")
                 }
                 .foregroundColor(.yellow)
                 .opacity(opacities[Player.yellow] ?? 0)
-                .animation(
-                    defaultAnimation, value: opacities[Player.yellow] ?? 0)
+
                 GridRow {
                     Text("Draws:")
                     Text("\(wins[.none] ?? 0)")
                 }
                 .foregroundColor(.gray)
                 .opacity(opacities[Player.none] ?? 0)
-                .animation(defaultAnimation, value: opacities[Player.none] ?? 0)
             }
 
             Button("New Game", action: resetGame)
